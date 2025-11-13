@@ -6,25 +6,39 @@ export async function createBranch(getOctokit: any, context: Context, branch: st
   branch = branch.replace('refs/heads/', '');
   const ref = `refs/heads/${branch}`;
 
-  // throws HttpError if branch already exists.
+  // Check if branch already exists
   try {
     await toolkit.rest.repos.getBranch({
       ...context.repo,
       branch,
     });
+
+    // Branch exists, update it with the new SHA
+    const resp = await toolkit.rest.git.updateRef({
+      ref,
+      sha: sha || context.sha,
+      ...context.repo,
+    });
+
+    return isValidRefResponse(resp, ref);
   } catch (error: any) {
     if (error.name === 'HttpError' && error.status === 404) {
+      // Branch doesn't exist, create it
       const resp = await toolkit.rest.git.createRef({
         ref,
         sha: sha || context.sha,
         ...context.repo,
       });
 
-      return resp?.data?.ref === ref;
+      return isValidRefResponse(resp, ref);
     } else {
       throw Error(error);
     }
   }
+}
+
+function isValidRefResponse(resp: any, expectedRef: string): boolean {
+  return resp?.data?.ref === expectedRef;
 }
 
 function githubToken(): string {

@@ -6,13 +6,13 @@ branding:
   color: 'green'
 inputs:
   branch:
-    description: 'The branch to create'
+    description: 'The branch to create (or update if it already exists via a fast-forward)'
     default: 'release-candidate'
   sha:
-    description: 'The SHA1 value for the branch reference'
+    description: 'The SHA1 value for the branch reference. If omitted the action uses the event SHA.'
 outputs:
   created:
-    description: 'Boolean value representing whether or not a new branch was created.'
+    description: 'Boolean value representing whether the branch reference was successfully created or updated to the requested SHA.'
 runs:
   using: 'node20'
   main: 'dist/index.js'
