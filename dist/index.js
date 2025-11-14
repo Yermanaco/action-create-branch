@@ -10117,10 +10117,29 @@ function wrappy (fn, cb) {
 /***/ }),
 
 /***/ 6719:
-/***/ (function(__unused_webpack_module, exports) {
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -10132,29 +10151,43 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createBranch = void 0;
+const core = __importStar(__nccwpck_require__(2186));
 function createBranch(getOctokit, context, branch, sha) {
-    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         const toolkit = getOctokit(githubToken());
         // Sometimes branch might come in with refs/heads already
         branch = branch.replace('refs/heads/', '');
         const ref = `refs/heads/${branch}`;
-        // throws HttpError if branch already exists.
+        const refPath = `heads/${branch}`;
+        const targetSha = sha || context.sha;
+        core.debug(`Target ref: ${ref} (createRef), refPath: ${refPath} (getRef/updateRef), target SHA: ${targetSha}`);
+        // Check if branch already exists using git refs API (heads/<branch>)
         try {
-            yield toolkit.rest.repos.getBranch(Object.assign(Object.assign({}, context.repo), { branch }));
+            const refData = yield toolkit.rest.git.getRef(Object.assign({ ref: refPath }, context.repo));
+            core.debug(`Found ref via getRef: ${JSON.stringify(refData.data)}`);
+            // If ref exists, update it to target SHA
+            const resp = yield toolkit.rest.git.updateRef(Object.assign({ ref: refPath, sha: targetSha }, context.repo));
+            core.debug(`updateRef response: ${JSON.stringify(resp.data)}`);
+            return isValidRefResponse(resp, ref);
         }
         catch (error) {
+            // If the ref was not found, create it. Other errors bubble up.
             if (error.name === 'HttpError' && error.status === 404) {
-                const resp = yield toolkit.rest.git.createRef(Object.assign({ ref, sha: sha || context.sha }, context.repo));
-                return ((_a = resp === null || resp === void 0 ? void 0 : resp.data) === null || _a === void 0 ? void 0 : _a.ref) === ref;
+                core.debug(`Ref not found via getRef, creating new branch`);
+                const resp = yield toolkit.rest.git.createRef(Object.assign({ ref, sha: targetSha }, context.repo));
+                core.debug(`createRef response: ${JSON.stringify(resp.data)}`);
+                return isValidRefResponse(resp, ref);
             }
-            else {
-                throw Error(error);
-            }
+            core.debug(`Unexpected error while checking/creating ref: ${error.name} ${error.status} ${error.message}`);
+            throw Error(error);
         }
     });
 }
 exports.createBranch = createBranch;
+function isValidRefResponse(resp, expectedRef) {
+    var _a;
+    return ((_a = resp === null || resp === void 0 ? void 0 : resp.data) === null || _a === void 0 ? void 0 : _a.ref) === expectedRef;
+}
 function githubToken() {
     const token = process.env.GITHUB_TOKEN;
     if (!token)
