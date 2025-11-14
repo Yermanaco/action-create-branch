@@ -13,7 +13,8 @@ describe('Create a branch based on the input', () => {
     rest: {
       git: {
         createRef: jest.fn(),
-        updateRef: jest.fn()
+        updateRef: jest.fn(),
+        getRef: jest.fn()
       },
       repos: {
         getBranch: jest.fn()
@@ -28,18 +29,20 @@ describe('Create a branch based on the input', () => {
   });
 
   it('gets a branch', async () => {
-    octokitMock.rest.repos.getBranch.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.getRef.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.createRef.mockResolvedValue({ data: { ref: `refs/heads/${branch}` } });
     process.env.GITHUB_REPOSITORY = 'peterjgrainger/test-action-changelog-reminder'
     await createBranch(githubMock, context, branch)
-    expect(octokitMock.rest.repos.getBranch).toHaveBeenCalledWith({
+    expect(octokitMock.rest.git.getRef).toHaveBeenCalledWith({
+      ref: `heads/${branch}`,
       repo: 'test-action-changelog-reminder',
-      owner: 'peterjgrainger',
-      branch
+      owner: 'peterjgrainger'
     })
   });
 
   it('Creates a new branch if not already there', async () => {
-    octokitMock.rest.repos.getBranch.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.getRef.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.createRef.mockResolvedValue({ data: { ref: 'refs/heads/release-v1' } });
     await createBranch(githubMock, contextMock, branch)
     expect(octokitMock.rest.git.createRef).toHaveBeenCalledWith(expect.objectContaining({
       ref: 'refs/heads/release-v1',
@@ -48,7 +51,8 @@ describe('Create a branch based on the input', () => {
   });
 
   it('Creates a new branch from a given commit SHA', async () => {
-    octokitMock.rest.repos.getBranch.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.getRef.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.createRef.mockResolvedValue({ data: { ref: 'refs/heads/release-v1' } });
     await createBranch(githubMock, contextMock, branch, sha)
     expect(octokitMock.rest.git.createRef).toHaveBeenCalledWith(expect.objectContaining({
       ref: 'refs/heads/release-v1',
@@ -57,7 +61,8 @@ describe('Create a branch based on the input', () => {
   })
 
   it('Replaces refs/heads in branch name', async () => {
-    octokitMock.rest.repos.getBranch.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.getRef.mockRejectedValue(new HttpError())
+    octokitMock.rest.git.createRef.mockResolvedValue({ data: { ref: 'refs/heads/release-v1' } });
     await createBranch(githubMock, contextMock, `refs/heads/${branch}`)
     expect(octokitMock.rest.git.createRef).toHaveBeenCalledWith(expect.objectContaining({
       ref: 'refs/heads/release-v1',
@@ -66,14 +71,14 @@ describe('Create a branch based on the input', () => {
   });
 
   it('Updates existing branch via fast-forward', async () => {
-    // getBranch succeeds (branch exists)
-    octokitMock.rest.repos.getBranch.mockResolvedValue({});
+    // getRef succeeds (ref exists)
+    octokitMock.rest.git.getRef.mockResolvedValue({ data: { ref: 'refs/heads/release-v1', object: { sha: contextMock.sha } } });
     octokitMock.rest.git.updateRef.mockResolvedValue({ data: { ref: 'refs/heads/release-v1' } });
 
     const result = await createBranch(githubMock, contextMock, branch, undefined);
 
     expect(octokitMock.rest.git.updateRef).toHaveBeenCalledWith(expect.objectContaining({
-      ref: 'refs/heads/release-v1',
+      ref: 'heads/release-v1',
       sha: contextMock.sha
     }));
 
