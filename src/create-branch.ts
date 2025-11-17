@@ -43,7 +43,7 @@ export async function createBranch(getOctokit: any, context: Context, branch: st
     }
 
     core.debug(`Unexpected error while checking/creating ref: ${error.name} ${error.status} ${error.message}`);
-    throw Error(error);
+    throw error;
   }
 }
 
