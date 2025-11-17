@@ -8,7 +8,7 @@ This action creates a new branch with the same commit reference as the branch it
 
 **Optional** The name of the branch to create. Default `"release-candidate"`. If your branch contains forward slashes (`/`) use the full branch reference. Instead of `/long/branch/name` use `refs/heads/long/branch/name`. It's an issue with the GitHub API https://gist.github.com/jasonrudolph/10727108
 
-If the branch already exists, the action will attempt to update the branch reference to point at the provided `sha` (or the current event `sha`) via a fast‑forward update. The action does not force-push or rewrite history; if the update is not a fast‑forward the API will reject the update.
+If the branch already exists, the action will attempt to update the branch reference to point at the provided `sha` (or the current event `sha`) via a fast-forward update. The action does not force-push or rewrite history; if the update is not a fast-forward the API will reject the update.
 
 ### `sha`
 
